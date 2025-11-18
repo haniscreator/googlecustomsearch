@@ -4,6 +4,8 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\Admin\Analytics\AnalyticsController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -36,3 +38,11 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+Route::middleware(['auth']) // add 'verified' too if you use email verification
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('/analytics/summary', [AnalyticsController::class, 'summary'])
+            ->name('analytics.summary');
+    });
