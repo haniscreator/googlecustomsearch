@@ -27,6 +27,7 @@ class RecordSearchPerformedJob implements ShouldQueue
      */
     public function handle(): void
     {
+        sleep(5); 
         AnalyticsEvent::create([
             'event_type'    => 'search_performed',
             'query'         => $this->query,
@@ -34,6 +35,8 @@ class RecordSearchPerformedJob implements ShouldQueue
             'provider'      => $this->provider,
             'meta'          => null, // or [] if you want
         ]);
+        
+        //throw new \Exception('Sentry test error from RecordSearchPerformedJob');
     }
     
 }
