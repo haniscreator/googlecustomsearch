@@ -39,10 +39,16 @@ Route::middleware('auth')->group(function () {
 
 require __DIR__.'/auth.php';
 
-Route::middleware(['auth']) // add 'verified' too if you use email verification
+Route::middleware(['auth'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
+        // Analytics page (Inertia)
+        Route::get('/analytics', [AnalyticsController::class, 'index'])
+            ->name('analytics.index');
+
+        // Analytics JSON summary
         Route::get('/analytics/summary', [AnalyticsController::class, 'summary'])
             ->name('analytics.summary');
     });
+

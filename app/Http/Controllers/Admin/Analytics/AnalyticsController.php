@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin\Analytics;
 use App\Http\Controllers\Controller;
 use App\Services\Analytics\AnalyticsService;
 use Illuminate\Http\JsonResponse;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class AnalyticsController extends Controller
 {
@@ -13,7 +15,15 @@ class AnalyticsController extends Controller
     ) {}
 
     /**
-     * Simple JSON summary for admin dashboard.
+     * Render the admin analytics page (Inertia).
+     */
+    public function index(): Response
+    {
+        return Inertia::render('Admin/Analytics/Overview');
+    }
+
+    /**
+     * JSON summary for the admin analytics page.
      */
     public function summary(): JsonResponse
     {
@@ -21,8 +31,8 @@ class AnalyticsController extends Controller
         $recent  = $this->analyticsService->getRecentSearches(10);
 
         return response()->json([
-            'summary'        => $summary,
-            'recent_searches'=> $recent,
+            'summary'         => $summary,
+            'recent_searches' => $recent,
         ]);
     }
 }
