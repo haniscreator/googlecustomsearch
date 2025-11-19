@@ -24,6 +24,7 @@ Controller → Action → Service → External Provider → DB + Queue → Analy
 ---
 
 ## 🧩 System Design Overview
+```mermaid
 flowchart LR
 subgraph Client["Client Side"]
 U["User / Browser (Frontend UI)"]
@@ -66,7 +67,7 @@ S -->|HTTP Request| Google
 
 SearchApp --> Logs & Metrics
 AnalyticsApp --> Logs & Metrics
-
+```
 
 ---
 
