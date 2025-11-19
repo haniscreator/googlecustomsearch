@@ -25,48 +25,65 @@ Controller → Action → Service → External Provider → DB + Queue → Analy
 
 ## 🧩 System Design Overview
 ```mermaid
+---
+config:
+  flowchart:
+    nodeSpacing: 70
+    rankSpacing: 90
+    curve: linear
+  theme: neo-dark
+  layout: dagre
+---
 flowchart LR
-subgraph Client["Client Side"]
-U["User / Browser (Frontend UI)"]
-API["External API Client"]
-end
-subgraph Edge["API Gateway / Load Balancer"]
-LB["NGINX / ALB / Gateway"]
-end
-subgraph SearchApp["Search Service"]
-C["HTTP Controllers"]
-A["Actions (SearchExternalAction, StoreHistoryAction)"]
-S["Services (SearchService, SearchClient)"]
-M[("Search DB")]
-R[("Redis - Cache + Queue")]
-Q["Queue Workers"]
-end
-subgraph AnalyticsApp["Analytics Service"]
-AC["Analytics Controllers"]
-AS["Analytics Service"]
-AM[("Analytics DB")]
-AQ["Analytics Queue Workers"]
-end
-subgraph External["External Providers"]
-Google["Google Custom Search API"]
-Logs["Logs / ELK / Sentry"]
-Metrics["Metrics / APM"]
-end
+ subgraph Client["Client Side"]
+    direction TB
+        U["User / Browser<br>(Frontend UI)"]
+        API["External API<br>Client"]
+  end
+ subgraph Edge["API Gateway / Load Balancer"]
+    direction TB
+        LB["NGINX / ALB / Gateway"]
+  end
+ subgraph SearchApp["Search Service"]
+    direction TB
+        C["HTTP Controllers"]
+        A["Actions<br>(SearchExternalAction,<br>StoreHistoryAction)"]
+        S["Services<br>(SearchService,<br>SearchClient)"]
+        M[("Search DB")]
+        R[("Redis - Cache + Queue")]
+        Q["Queue Workers"]
+  end
+ subgraph AnalyticsApp["Analytics Service"]
+    direction TB
+        AC["Analytics Controllers"]
+        AS["Analytics Service"]
+        AM[("Analytics DB")]
+        AQ["Analytics Queue Workers"]
+  end
+ subgraph External["External Providers"]
+    direction TB
+        Google["Google Custom<br>Search API"]
+        Logs["Logs / ELK / Sentry"]
+        Metrics["Metrics / APM"]
+  end
+    U --> sp1((" "))
+    sp1 --> LB
+    API --> sp1
+    LB --> sp2((" ")) & sp2
+    sp2 --> C & AC
+    C --> A
+    A --> S
+    S -- cache, read/write --> R
+    S -- read/write --> M
+    A -- dispatch job --> Q
+    Q -- store analytics event --> AM
+    S -- HTTP Request --> Google
+    SearchApp --> Logs & Metrics
+    AnalyticsApp --> Logs & Metrics
+     sp1:::invis
+     sp2:::invis
+    classDef invis fill:none,stroke:none
 
-U --> LB
-API --> LB
-LB --> C & AC
-
-C --> A --> S
-S -->|cache, read/write| R
-S -->|read/write| M
-A -->|dispatch job| Q
-Q -->|store analytics event| AM
-
-S -->|HTTP Request| Google
-
-SearchApp --> Logs & Metrics
-AnalyticsApp --> Logs & Metrics
 ```
 
 ---
