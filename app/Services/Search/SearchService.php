@@ -13,45 +13,60 @@ class SearchService
         protected StoreHistoryAction $storeHistoryAction,
     ) {}
 
-    /**
-     * Perform a search using the external search provider.
-     */
     public function search(string $query, array $options = []): array
     {
-        $provider = 'google'; // later can come from config
+        $provider = 'google';
 
-        // Build a stable cache key: provider + query + options hash
-        $optionsKey = !empty($options) ? md5(json_encode($options)) : 'default';
-        $cacheKey   = "search:{$provider}:{$optionsKey}:" . md5($query);
+        $cacheKey = $this->buildCacheKey($provider, $query, $options);
+        $ttl = $this->getCacheTtl();
 
-        // TTL for cached results (e.g. 5 minutes)
-        $ttl = now()->addMinutes(5);
-
-        // 1. Try cache first, if miss, call external provider and store
+        // Cache::remember closure tested using ->andReturnUsing()
         $results = Cache::remember($cacheKey, $ttl, function () use ($query, $options) {
-            return $this->client->search($query, $options);
+            return $this->fetchFromProvider($query, $options);
         });
 
-        // 2. Store history (we still want to log that a user searched,
-        //    even if the result came from cache)
+        // Save search history
         $this->storeHistoryAction->execute(
             query: $query,
             rawResults: $results,
             provider: $provider,
         );
 
-        // 3. Publish analytics event
-        $items        = $results['items'] ?? [];
-        $resultsCount = is_array($items) ? count($items) : null;
+        // Dispatch analytics job
+        $resultsCount = $this->extractResultsCount($results);
+        $this->dispatchAnalyticsEvent($query, $resultsCount, $provider);
 
+        return $results;
+    }
+
+    protected function buildCacheKey(string $provider, string $query, array $options = []): string
+    {
+        $optionsKey = !empty($options) ? md5(json_encode($options)) : 'default';
+        return "search:{$provider}:{$optionsKey}:" . md5($query);
+    }
+
+    protected function getCacheTtl(): \DateTimeInterface|int
+    {
+        return now()->addMinutes(5);
+    }
+
+    protected function fetchFromProvider(string $query, array $options = []): array
+    {
+        return $this->client->search($query, $options);
+    }
+
+    protected function extractResultsCount(array $results): ?int
+    {
+        $items = $results['items'] ?? [];
+        return is_array($items) ? count($items) : null;
+    }
+
+    protected function dispatchAnalyticsEvent(string $query, ?int $resultsCount, string $provider): void
+    {
         RecordSearchPerformedJob::dispatch(
             query: $query,
             resultsCount: $resultsCount,
             provider: $provider,
         );
-
-        return $results;
     }
-
-
 }
