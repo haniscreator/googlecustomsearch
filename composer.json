@@ -20,8 +20,9 @@
         "laravel/breeze": "^1.29",
         "laravel/pint": "^1.0",
         "laravel/sail": "^1.18",
-        "mockery/mockery": "^1.4.4",
+        "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^7.0",
+        "orchestra/testbench": "^8.36",
         "phpunit/phpunit": "^10.1",
         "spatie/laravel-ignition": "^2.0"
     },
