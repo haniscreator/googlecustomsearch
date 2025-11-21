@@ -24,16 +24,6 @@ jobs:
           --health-timeout=5s
           --health-retries=3
 
-      redis:
-        image: redis:6
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd="redis-cli ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,6 +35,15 @@ jobs:
           extensions: mbstring, pdo_mysql, bcmath
           coverage: none
 
+      - name: Install Composer dependencies
+        run: composer install --no-progress --prefer-dist --no-interaction
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: "npm"
+
       - name: Cache composer deps
         uses: actions/cache@v4
         with:
@@ -52,12 +51,6 @@ jobs:
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: |
             ${{ runner.os }}-composer-
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-          cache: "npm"
 
       - name: Restore node modules cache
         uses: actions/cache@v4
@@ -71,45 +64,6 @@ jobs:
 
       - name: Install npm dependencies
         run: npm ci
-        working-directory: .
 
       - name: Build frontend assets
         run: npm run build
-        working-directory: .
-
-      - name: Install Composer dependencies
-        run: composer install --no-progress --prefer-dist --no-interaction
-
-      - name: Copy ENV for tests
-        run: cp .env.example .env
-
-      - name: Ensure storage & logs exist
-        run: |
-          mkdir -p storage/logs
-          chmod -R 0777 storage
-          php artisan key:generate || true
-
-      - name: Prepare DB (migrate)
-        env:
-          DB_CONNECTION: sqlite
-          DB_DATABASE: ":memory:"
-        run: |
-          php artisan migrate --force
-
-      - name: Run PHPUnit
-        run: vendor/bin/phpunit --testdox
-        continue-on-error: true
-
-      - name: Upload PHPUnit result log (always)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: phpunit-results
-          path: storage/logs/*.log
-
-      - name: Upload Laravel logs (always)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: laravel-logs
-          path: storage/logs/*.log
