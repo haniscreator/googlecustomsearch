@@ -175,6 +175,7 @@ Test suite coverage & philosophy
 .github/workflows/phpunit.yml
 ```
 Badge (auto-updates after workflow runs):
+
 ![Tests](https://github.com/haniscreator/googlecustomsearch/actions/workflows/phpunit.yml/badge.svg)
 
 
