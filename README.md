@@ -1,4 +1,5 @@
 # 🔎 Google Custom Search – Search & Analytics Platform
+![Tests](https://github.com/haniscreator/googlecustomsearch/actions/workflows/phpunit.yml/badge.svg)
 
 A Laravel-based Search & Analytics backend that integrates with **Google Custom Search JSON API**, supports **Redis caching and queues**, tracks **search analytics**, and provides an **Inertia + Vue admin dashboard** for reporting and insights.
 
@@ -147,6 +148,35 @@ Shows:
 ### Backend API:
 ```bash
 GET /admin/analytics/summary
+```
+
+---
+### 🧪 Testing & CI
+## Local test environment
+Create .env.testing (already included in repo) and run tests with in-memory SQLite:
+```bash
+php artisan test
+# or
+vendor/bin/phpunit --testdox
+```
+Example successful output:
+```bash
+Tests: 31 passed (70 assertions)
+Duration: 8.31s
+```
+Test suite coverage & philosophy
+- Core unit tests cover the SearchService, SearchClient, StoreHistoryAction, and RecordSearchPerformedJob.
+- Tests use in-memory SQLite (DB_CONNECTION=sqlite, DB_DATABASE=:memory:), CACHE_DRIVER=array, and QUEUE_CONNECTION=sync to remain fast and deterministic.
+- External HTTP calls are faked using Http::fake().
+
+## CI (GitHub Actions)
+- A GitHub Actions workflow runs the test suite, builds frontend assets, and uploads Laravel logs on each push/PR:
+```bash
+.github/workflows/phpunit.yml
+```
+Badge (auto-updates after workflow runs):
+```bash
+![Tests](https://github.com/haniscreator/googlecustomsearch/actions/workflows/phpunit.yml/badge.svg)
 ```
 
 ---
