@@ -26,6 +26,8 @@ class SearchServiceTest extends TestCase
         $query = 'cat';
         $options = [];
         $expected = ['items' => [['title' => 'result']]];
+        $expectedResultsCount = is_array($expected['items']) ? count($expected['items']) : null;
+        $expectedSuffix = md5($query);
 
         $client = Mockery::mock(SearchClient::class);
         $client->shouldReceive('search')
@@ -40,8 +42,16 @@ class SearchServiceTest extends TestCase
                 return $q === $query && $raw === $expected && $provider === 'google';
             });
 
+        // Assert cache key shape and run the closure to simulate cache miss
         Cache::shouldReceive('remember')
             ->once()
+            ->withArgs(function ($key, $ttl, $closure) use ($expectedSuffix) {
+                // key should end with md5(query) and ttl should be a DateTimeInterface or integer
+                $keyOk = \str_ends_with($key, $expectedSuffix) && \str_starts_with($key, 'search:google:');
+                $ttlOk = $ttl instanceof \DateTimeInterface || is_int($ttl);
+                $closureOk = is_callable($closure);
+                return $keyOk && $ttlOk && $closureOk;
+            })
             ->andReturnUsing(fn ($key, $ttl, $closure) => $closure());
 
         $service = new SearchService($client, $storeHistory);
@@ -50,7 +60,12 @@ class SearchServiceTest extends TestCase
 
         $this->assertSame($expected, $result);
 
-        Bus::assertDispatched(RecordSearchPerformedJob::class);
+        // Assert the job was dispatched with correct payload
+        Bus::assertDispatched(RecordSearchPerformedJob::class, function ($job) use ($query, $expectedResultsCount) {
+            return $job->query === $query
+                && $job->resultsCount === $expectedResultsCount
+                && $job->provider === 'google';
+        });
     }
 
     public function test_cache_hit_does_not_call_client_but_dispatches_job()
@@ -59,6 +74,8 @@ class SearchServiceTest extends TestCase
 
         $query = 'dog';
         $cached = ['items' => [['title' => 'cached']]];
+        $expectedResultsCount = is_array($cached['items']) ? count($cached['items']) : null;
+        $expectedSuffix = md5($query);
 
         $client = Mockery::mock(SearchClient::class);
         $client->shouldReceive('search')->never();
@@ -66,8 +83,16 @@ class SearchServiceTest extends TestCase
         $storeHistory = Mockery::mock(StoreHistoryAction::class);
         $storeHistory->shouldReceive('execute')->once();
 
+        // Assert cache key shape and return cached result (simulate cache hit)
         Cache::shouldReceive('remember')
             ->once()
+            ->withArgs(function ($key, $ttl, $closure) use ($expectedSuffix) {
+                $keyOk = \str_ends_with($key, $expectedSuffix) && \str_starts_with($key, 'search:google:');
+                $ttlOk = $ttl instanceof \DateTimeInterface || is_int($ttl);
+                // On cache hit the closure should still be provided but won't be executed by our mock
+                $closureOk = is_callable($closure);
+                return $keyOk && $ttlOk && $closureOk;
+            })
             ->andReturn($cached);
 
         $service = new SearchService($client, $storeHistory);
@@ -76,6 +101,11 @@ class SearchServiceTest extends TestCase
 
         $this->assertSame($cached, $result);
 
-        Bus::assertDispatched(RecordSearchPerformedJob::class);
+        // Assert the job was dispatched with correct payload even when result comes from cache
+        Bus::assertDispatched(RecordSearchPerformedJob::class, function ($job) use ($query, $expectedResultsCount) {
+            return $job->query === $query
+                && $job->resultsCount === $expectedResultsCount
+                && $job->provider === 'google';
+        });
     }
 }

@@ -33,6 +33,7 @@ class SearchService
         );
 
         // Dispatch analytics job
+        // SearchService → dispatch job → Redis Queue → Worker → Analytics DB
         $resultsCount = $this->extractResultsCount($results);
         $this->dispatchAnalyticsEvent($query, $resultsCount, $provider);
 

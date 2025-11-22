@@ -2,16 +2,21 @@
 
 namespace App\Jobs;
 
+use App\Models\AnalyticsEvent;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use App\Models\AnalyticsEvent;
+use Throwable;
+use Sentry\State\HubInterface;
 
 class RecordSearchPerformedJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public $tries = 3;              // retry 3 times
+    public $backoff = [10, 30, 60]; // interval between retries
 
     public function __construct(
         public string $query,
@@ -19,24 +24,30 @@ class RecordSearchPerformedJob implements ShouldQueue
         public ?string $provider = 'google',
     ) {}
 
-    /**
-     * Handle the job.
-     * Later we will:
-     *  - write to Analytics DB
-     *  - update aggregates
-     */
     public function handle(): void
     {
-        sleep(5); 
+        // REMOVE sleep(5) — extremely expensive for workers
+
         AnalyticsEvent::create([
             'event_type'    => 'search_performed',
             'query'         => $this->query,
             'results_count' => $this->resultsCount,
             'provider'      => $this->provider,
-            'meta'          => null, // or [] if you want
+            'meta'          => null,
         ]);
-        
-        //throw new \Exception('Sentry test error from RecordSearchPerformedJob');
     }
-    
+
+    public function failed(Throwable $exception): void
+    {
+        \Log::error('analytics.job.failed', [
+            'query' => $this->query,
+            'provider' => $this->provider,
+            'message' => $exception->getMessage(),
+        ]);
+
+        // Send to Sentry if installed
+        if (app()->bound(HubInterface::class)) {
+            app(HubInterface::class)->captureException($exception);
+        }
+    }
 }
